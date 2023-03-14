@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #define MP_USE_ETL
+#define MP_USE_DEBUG
 #include <mp/World.hpp>
 
 
@@ -59,6 +60,8 @@ void setup()
     particleRows = makeGrid(min, max, {15.0, 5.0, 0.0});
     
 
+    for (auto &p : particleRows[0])
+        p.inverseMass = 0.0;
     for (auto &p : particleRows[particleRows.size() - 1])
         p.inverseMass = 0.0;
     for (auto &row : particleRows)
@@ -93,12 +96,18 @@ void setup()
         
 void loop()
 {
-    static elapsedMillis timer = 0;
-    world.step((double)timer / 1'000.0);
-
+    static elapsedMicros timer = 0;
+    double dt = timer / 1'000'000.0;
+    timer = 0;
+    world.step(dt);
+    static int frames = 0;
+    frames++;
     static elapsedMillis outputMs = 0;
     if (outputMs > 10)
     {
+        if (world.isDeathSpiralling)
+            Serial.println("dying");
+        frames = 0;
         for (auto &row : particleRows)
             for (auto &p : row)
             {
@@ -113,16 +122,14 @@ void loop()
         outputMs = 0;
     }
 
-    static elapsedMillis impulseMs = 0;
+    static elapsedMillis impulseMs = 15000;
     if (impulseMs > 15000)
     {
         int index = random(0, 15);
-        particleRows[2][index].applyImpulse({0.0f, 0.0f, 200.0f});
+        particleRows[particleRows.size() - 2][index].applyImpulse({0.0f, 0.0f, 200.0f});
         impulseMs = random(0, 2000);
     }
-    timer = 0;
 }
-
 
 
 

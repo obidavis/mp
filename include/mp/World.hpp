@@ -1,6 +1,7 @@
 #ifndef World_h_
 #define World_h_
 
+#include "utility/debug.hpp"
 #include "Dynamics.hpp"
 #include "Constraint.hpp"
 #include "Container.hpp"
@@ -36,11 +37,12 @@ public:
     void step(ScalarType dt)
     {
         dtAccumulator += dt;
+        int updateCounter = 0;
         while (dtAccumulator >= stepSize)
         {
+            updateCounter++;
 //            std::cout << "dt: " << dt << "\n";
 //            std::cout << "dtAccumulator: " << dtAccumulator << "\n";
-            
             for (Particle_t *particle : particles)
             {           
                 static int i = 0;    
@@ -72,7 +74,6 @@ public:
                 particle->position = newPosition;
                 particle->linearVelocity = newVelocity;
                 particle->acceleration = newAcceleration;
-
                 edgeHandler->handleEdge(particle);
                 i++;
             }
@@ -90,6 +91,12 @@ public:
 
             dtAccumulator -= stepSize;
         }
+        
+        static ScalarType prevDt = 0.0;
+        ScalarType diff = dt - prevDt;
+        prevDt = dt;
+        isDeathSpiralling = diff > stepSize;
+
     }     
     
     vector<Particle_t *> particles;
@@ -99,6 +106,7 @@ public:
     float randomSeed = 0.0f;
     ScalarType stepSize = 0.01;
     ScalarType dtAccumulator{};
+    bool isDeathSpiralling = false;
 };
 }
 #endif
