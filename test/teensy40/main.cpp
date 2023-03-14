@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #define MP_USE_ETL
-#include <MiniPhysics/World.hpp>
+#include <mp/World.hpp>
 
 
 using Vec3 = Vec<3, float>;
@@ -71,9 +71,9 @@ void setup()
     {
         for (int c = 0; c < particleRows[r].size(); ++c)
         {
-            joins.emplace_back(&(particleRows[r][c]), &(particleRows[r - 1][c]));
+            joins.emplace_back(particleRows[r][c], particleRows[r - 1][c]);
             if (c > 0)
-                joins.emplace_back(&(particleRows[r][c]), &(particleRows[r][c - 1]));
+                joins.emplace_back(particleRows[r][c], particleRows[r][c - 1]);
         }
     }
 

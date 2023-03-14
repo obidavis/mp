@@ -49,20 +49,6 @@ public:
         impulse1.deltaV = offsetDir * lambda;
         impulse2.deltaV = -1 * offsetDir * lambda;
         
-        if (std::isnan(impulse1.deltaV[0]))
-        {
-            std::cout << "dt " << dt << "\n";
-            std::cout << "offset " << offset << "\n";
-            std::cout << "distance " << distance << "\n";
-            std::cout << "offsetDir " << offsetDir << "\n";
-            std::cout << "relativeVelocity " << relativeVelocity << "\n";
-            std::cout << "velocityDot " << velocityDot << "\n";
-            std::cout << "bias " << bias << "\n";
-            std::cout << "lambda " << lambda << "\n";
-            std::cout << "p1 " << this->p1.position << "\n";
-            std::cout << "p2 " << this->p2.position << "\n";
-            exit(69);
-        }   
         return {impulse1, impulse2};
     }
 private:

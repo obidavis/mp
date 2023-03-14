@@ -7,7 +7,7 @@
 #include <etl/vector.h>
 namespace mp {
     template <typename T>
-    using vector = etl::vector<T, 64>;
+    using vector = etl::vector<T, 150>;
 }
 #else
 #include <vector>
