@@ -1,8 +1,8 @@
 #include <cmath>
 #include <vector>
 #include <chrono>
-#include "../../src/Vec_ios.hpp"
-#include "../../src/World.hpp"
+#include "../../include/mp/Vec_ios.hpp"
+#include "../../include/mp/World.hpp"
 #include "SDL_Renderer.hpp"
 
 
@@ -40,9 +40,10 @@ std::vector<std::vector<Particle3>> makeGrid(Vec3 min, Vec3 max, Vec<3, double> 
 int main(int argc, char * argv[]){
     Vec3 min{-70.0, -20.0, -5.0};
     Vec3 max{70.0, 20.0, 5.0};
-    auto particleRows = makeGrid(min, max, {15.0, 5.0, 0.0});
+    auto particleRows = makeGrid(min, max, {45.0, 15.0, 0.0});
     float aspectRatio = ((max.x() - min.x()) / (max.y() - min.y()));
-    int winHeight = 
+    int winHeight = 200;
+    int winWidth = 700;
     MP_SDL_Renderer renderer(winHeight, winWidth, {min.x(), max.y(), min.z()}, {max.x(), min.y(), max.z()});
     
 

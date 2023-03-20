@@ -1,6 +1,6 @@
-#include "../../src/Renderer.hpp"
-#include "../../src/Surface.hpp"
-#include "../../src/Shader.hpp"
+#include "../../include/mp/Renderer.hpp"
+#include "../../include/mp/Surface.hpp"
+#include "../../include/mp/Shader.hpp"
 #include <SDL2/SDL.h>
 
 class MP_SDL_Renderer : public Renderer<3, double>
