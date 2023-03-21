@@ -9,14 +9,6 @@
 using Vec3 = Vec<3, double>;
 using Particle3 = Particle<3, double>;
 
-struct Damping
-{
-    double damping = 0.4;
-    Vec3 operator()(Particle3 particle) { return particle.linearVelocity * -damping; }
-};
-
-Vec3 Gravity(const Particle3 &particle) { return Vec3{0, -13.0, 0} * particle.mass; }
-
 std::vector<std::vector<Particle3>> makeGrid(Vec3 min, Vec3 max, Vec<3, double> dim)
 {
     Vec<3, double> inc = (max - min) / (dim - 1);
@@ -26,7 +18,7 @@ std::vector<std::vector<Particle3>> makeGrid(Vec3 min, Vec3 max, Vec<3, double> 
         std::vector<Particle3> row;
         for (int x = 0; x < static_cast<int>(dim.x()); ++x)
         {
-            Particle3 particle(1.0, 1.0);
+            Particle3 particle;
             particle.position.x() = min.x() + x * inc.x();
             particle.position.y() = min.y() + y * inc.y();
             row.push_back(particle);
@@ -48,7 +40,6 @@ int main(int argc, char * argv[]){
     
 
     mp::World<3, double> world;
-    Damping damping;
 //    std::vector<std::vector<Particle3>> particleRows;
 //    std::vector<Particle3> topRow;
 //    for (int i = 0; i < 15; ++i)
@@ -91,7 +82,6 @@ int main(int argc, char * argv[]){
     }
 
 
-    world.addForce(Gravity);
     for (auto &row : particleRows)
         for (Particle3 &particle : row)
             world.addParticle(&particle);
@@ -99,9 +89,7 @@ int main(int argc, char * argv[]){
     for (DistanceConstraint<3, double> &join : joins)
         world.addConstraint(&join);
 
-    world.addForce(Gravity);
-    world.addForce(damping);
-    
+    world.setGravity({0, -13, 0}); 
     std::vector<Surface<double>> polygons;
     for (int i = 0; i < particleRows.size() - 1; ++i)
     {

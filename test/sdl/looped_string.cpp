@@ -99,7 +99,7 @@ public:
     bool log = false;
     double length;
     double strength = 0.2;
-    double biasFactor = 0.2;
+    double biasFactor = 0.3;
 };
 
 class _EdgeHandler : public mp::EdgeHandlerBase<2, double>
@@ -122,7 +122,7 @@ private:
    Vec_t min;
    Vec_t max;
 };
-Vec_t Gravity(const Particle_t &p) { return Vec_t{0, -9} * p.mass; }
+Vec_t Gravity(const Particle_t &p) { return Vec_t{0, -9} / p.inverseMass; }
 
 int main()
 {
@@ -133,8 +133,8 @@ int main()
     int nParticles = 50;
     for (int i = 0; i < nParticles; ++i)
     {
-        Particle_t p(1.0, 1.0);
-        p.position.x() = i / (static_cast<double>(nParticles) * 0.98);
+        Particle_t p;
+        p.position.x() = i / (static_cast<double>(nParticles) * 0.97);
         particles.push_back(p);
     }
     
@@ -154,7 +154,6 @@ int main()
     {
         Particle_t f = p;
         f.inverseMass = 0.0;
-        f.mass = 0.0;
         frame.push_back(f);
         DistanceConstraint<2, double> c(p, frame.back());
         c.strength = 0.1;
