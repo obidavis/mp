@@ -7,8 +7,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 # Our project name
 project (mp-sdl-test)
 
-add_executable(mp-sdl-test main.cpp)
-
 # For finding our SDL2 package!
 INCLUDE(FindPkgConfig)
 
@@ -18,5 +16,14 @@ PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
 # Including our external library's directory for header files!
 INCLUDE_DIRECTORIES(${SDL2_INCLUDE_DIRS})
 
-# Linking SDL2 library with our project.
-target_link_libraries(mp-sdl-test ${SDL2_LIBRARIES})
+set(MP_INCLUDE_DIR ../../include)
+include_directories(${MP_INCLUDE_DIR})
+
+file( GLOB APP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp )
+foreach( sourcefile ${APP_SOURCES} )
+    file(RELATIVE_PATH filename ${CMAKE_CURRENT_SOURCE_DIR} ${sourcefile})
+    string( REPLACE ".cpp" "" file ${filename} )
+    add_executable( ${file} ${sourcefile} )
+    target_link_libraries( ${file} ${SDL2_LIBRARIES} )
+endforeach( sourcefile ${APP_SOURCES} )
+

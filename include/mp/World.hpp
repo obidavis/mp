@@ -92,13 +92,14 @@ public:
             dtAccumulator -= stepSize;
         }
         
+        
         static ScalarType prevDt = 0.0;
         ScalarType diff = dt - prevDt;
         prevDt = dt;
         isDeathSpiralling = diff > stepSize;
 
     }     
-    
+    VecType gravity{};
     vector<Particle_t *> particles;
     vector<Force_t> forces;
     vector<Constraint<Dim, ScalarType> *> constraints;

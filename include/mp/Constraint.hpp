@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Dynamics.hpp"
+#include <mp/utility/maths.hpp>
 #include <utility>
 
 template <int Dim, typename T>
@@ -19,7 +20,6 @@ public:
     Particle<Dim, T> &p1;
     Particle<Dim, T> &p2;
 };
-
 
 
 template <int Dim, typename T>
@@ -51,7 +51,6 @@ public:
         
         return {impulse1, impulse2};
     }
-private:
     T length;
     T strength = 0.2;
     T biasFactor = 0.3;

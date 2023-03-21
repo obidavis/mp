@@ -1,9 +1,9 @@
 #include <cmath>
 #include <vector>
 #include <chrono>
-#include "../../include/mp/Vec_ios.hpp"
-#include "../../include/mp/World.hpp"
-#include "SDL_Renderer.hpp"
+#include <mp/Vec_ios.hpp>
+#include <mp/World.hpp>
+#include "ClothRenderer.hpp"
 
 
 using Vec3 = Vec<3, double>;
@@ -44,7 +44,7 @@ int main(int argc, char * argv[]){
     float aspectRatio = ((max.x() - min.x()) / (max.y() - min.y()));
     int winHeight = 200;
     int winWidth = 700;
-    MP_SDL_Renderer renderer(winHeight, winWidth, {min.x(), max.y(), min.z()}, {max.x(), min.y(), max.z()});
+    mp::NurbsRenderer renderer(winHeight, winWidth, {min.x(), max.y(), min.z()}, {max.x(), min.y(), max.z()});
     
 
     mp::World<3, double> world;

@@ -2,7 +2,9 @@
 #include <cmath>
 #include <type_traits>
 #include "../Vec.hpp"
+#ifdef ARDUINO
 #include <arm_math.h>
+#endif
 
 namespace mp {
     
@@ -45,4 +47,14 @@ namespace mp {
         T exponent;
 
     };
-};
+    
+    template <typename T>
+    struct wrapped_distance
+    {
+        wrapped_distance(T range) : range(range) {}
+        template <typename = typename std::enable_if<std::is_same<T, double>::value>::type>
+        T operator()(T val) { return fmod(fmod(val, range) + range * 1.5, range) - range * 0.5; }
+    private:
+        T range;
+    };
+ };
