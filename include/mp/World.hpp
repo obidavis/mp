@@ -6,9 +6,11 @@
 #include "Constraint.hpp"
 #include "Container.hpp"
 #include "EdgeHandlers.hpp"
+#include "dynamics/spring_force.hpp"
 #include "Vec.hpp"
 
 namespace mp {
+
 template<int Dim, typename ScalarType = double>
 class World
 {
@@ -16,7 +18,7 @@ class World
     using Particle_t = Particle<Dim, ScalarType>;
     using Force_t = Force<Dim, ScalarType>;
     using Medium_t = Medium<Dim, ScalarType>;
-
+    using force_cb_t = void (*)(Particle<Dim, ScalarType> *);
 public:
     World() : edgeHandler(new EdgeHandlerBase<Dim, ScalarType>()) {}
     World(EdgeHandlerBase<Dim, ScalarType> *edgeHandler) : edgeHandler(edgeHandler) {}
@@ -25,6 +27,8 @@ public:
     void addParticle(Particle_t *particle) { particles.push_back(particle); }
     void addForce(Force_t force) { forces.push_back(force); }
     void addConstraint(Constraint<Dim, ScalarType> *constraint) { constraints.push_back(constraint); }
+    void setForceCB(force_cb_t cb) { force_cb = cb; } 
+    void setGravity(VecType g) { gravity = g; }
     void addMedium(Medium_t *medium)
     {       
         addForce(medium);
@@ -33,7 +37,6 @@ public:
     //float densityAt(Vec2d pos);
     // template <typename T>
     // bool addForce(T &&force) { return addForce(std::ref(force)); }
-
     void step(ScalarType dt)
     {
         dtAccumulator += dt;
@@ -45,41 +48,19 @@ public:
 //            std::cout << "dtAccumulator: " << dtAccumulator << "\n";
             for (Particle_t *particle : particles)
             {           
-                static int i = 0;    
-                VecType newPosition =
-                    particle->position +
-                    (particle->linearVelocity * stepSize) +
-                    particle->acceleration * (stepSize * stepSize * ScalarType{0.5});
-                
-                VecType force = std::accumulate(
-                    forces.begin(), forces.end(), VecType{},
-                    [& particle](VecType &a, const Force_t &force) { a += force(*particle); return a; });
-                
-                VecType newAcceleration = force * particle->inverseMass;
 
-                VecType newVelocity = 
-                    particle->linearVelocity +
-                    (particle->acceleration + newAcceleration ) * (stepSize * ScalarType{0.5});
-                
-//                std::cout << "force " << force << "\n";
-//                std::cout << "position " << particle->position << "\n";
-//                std::cout << "linearVelocity " << particle->linearVelocity << "\n";
-//                std::cout << "acceleration " << particle->acceleration << "\n";
-//                std::cout << "newAcceleration " << newAcceleration << "\n";
-//                std::cout << "newVelocity " << newVelocity << "\n";
-//                std::cout << "newPosition " << newPosition << "\n";
-//                std::cout << "i " << i << "\n";
-//                if (std::isnan(force[0]))
-//                    exit(99);
-                particle->position = newPosition;
-                particle->linearVelocity = newVelocity;
-                particle->acceleration = newAcceleration;
+                if (particle->inverseMass != ScalarType{})
+                    particle->applyForce(gravity / particle->inverseMass);
+                particle->applyForce(-damping * particle->linearVelocity);
+                if (force_cb != nullptr)
+                    force_cb(particle);
+                particle->integrateVelocity(stepSize);
                 edgeHandler->handleEdge(particle);
-                i++;
             }
             int iterationCount = 10;
             ScalarType iterationDt = stepSize / static_cast<ScalarType>(iterationCount);
             for (int i = 0; i < iterationCount; ++i)
+            {
                 for (Constraint<Dim, ScalarType> *constraint : constraints)
                 {
                     auto impulses = constraint->solve(iterationDt);
@@ -87,7 +68,11 @@ public:
                     impulses.first.particle.applyImpulse(impulses.first.deltaV);
                     impulses.second.particle.applyImpulse(impulses.second.deltaV);
                 }
-
+            }
+            for (Particle_t *p : particles)
+            {
+                p->integratePosition(stepSize);
+            }
 
             dtAccumulator -= stepSize;
         }
@@ -99,6 +84,7 @@ public:
         isDeathSpiralling = diff > stepSize;
 
     }     
+    force_cb_t force_cb = nullptr;
     VecType gravity{};
     vector<Particle_t *> particles;
     vector<Force_t> forces;
@@ -106,6 +92,7 @@ public:
     EdgeHandlerBase<Dim, ScalarType> *edgeHandler;
     float randomSeed = 0.0f;
     ScalarType stepSize = 0.01;
+    ScalarType damping = 0.3;
     ScalarType dtAccumulator{};
     bool isDeathSpiralling = false;
 };
