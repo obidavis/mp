@@ -9,13 +9,13 @@ template <int Dim, typename T, int nVertices>
 struct Shape
 {
     using Vec_t = Vec<Dim, T>;
-    Vec<nVertices, const Vec_t &> vertices;
+    Vec<nVertices, Vec_t *> vertices;
 
     inline Vec_t centre(void) const
     {
         Vec_t c;
         for (int i = 0; i < nVertices; ++i)
-            c += vertices[i];
+            c += &(vertices[i]);
         c /= nVertices;
         return c;
     }
@@ -24,8 +24,8 @@ struct Shape
     template <int N = nVertices, typename meta::enable_if_t<N == 3>>
     inline Vec_t normal(void) const 
     {
-        Vec_t u = vertices[1] - vertices[0];
-        Vec_t v = vertices[2] - vertices[0];
+        Vec_t u = *(vertices[1]) - *(vertices[0]);
+        Vec_t v = *(vertices[2]) - *(vertices[0]);
 
         return {
             (u.y() * v.z()) - (u.z() * v.y()),

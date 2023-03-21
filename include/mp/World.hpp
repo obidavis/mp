@@ -18,7 +18,8 @@ class World
     using Particle_t = Particle<Dim, ScalarType>;
     using Force_t = Force<Dim, ScalarType>;
     using Medium_t = Medium<Dim, ScalarType>;
-    using force_cb_t = void (*)(Particle<Dim, ScalarType> *);
+    using unary_force_cb_t = void (*)(Particle<Dim, ScalarType> *);
+    using user_cb_t = void (*)(void);
 public:
     World() : edgeHandler(new EdgeHandlerBase<Dim, ScalarType>()) {}
     World(EdgeHandlerBase<Dim, ScalarType> *edgeHandler) : edgeHandler(edgeHandler) {}
@@ -27,7 +28,8 @@ public:
     void addParticle(Particle_t *particle) { particles.push_back(particle); }
     void addForce(Force_t force) { forces.push_back(force); }
     void addConstraint(Constraint<Dim, ScalarType> *constraint) { constraints.push_back(constraint); }
-    void setForceCB(force_cb_t cb) { force_cb = cb; } 
+    void setForceCB(unary_force_cb_t cb) { force_cb = cb; } 
+    void setUserCB(user_cb_t cb) { user_cb = cb; } 
     void setGravity(VecType g) { gravity = g; }
     void addMedium(Medium_t *medium)
     {       
@@ -55,23 +57,22 @@ public:
                 if (force_cb != nullptr)
                     force_cb(particle);
                 particle->integrateVelocity(stepSize);
-                edgeHandler->handleEdge(particle);
             }
+            if (user_cb != nullptr)
+                user_cb();
             int iterationCount = 10;
             ScalarType iterationDt = stepSize / static_cast<ScalarType>(iterationCount);
             for (int i = 0; i < iterationCount; ++i)
             {
                 for (Constraint<Dim, ScalarType> *constraint : constraints)
                 {
-                    auto impulses = constraint->solve(iterationDt);
-                     
-                    impulses.first.particle.applyImpulse(impulses.first.deltaV);
-                    impulses.second.particle.applyImpulse(impulses.second.deltaV);
+                   constraint->solve(iterationDt);
                 }
             }
             for (Particle_t *p : particles)
             {
                 p->integratePosition(stepSize);
+                edgeHandler->handleEdge(p);
             }
 
             dtAccumulator -= stepSize;
@@ -84,7 +85,8 @@ public:
         isDeathSpiralling = diff > stepSize;
 
     }     
-    force_cb_t force_cb = nullptr;
+    unary_force_cb_t force_cb = nullptr;
+    user_cb_t user_cb = nullptr;
     VecType gravity{};
     vector<Particle_t *> particles;
     vector<Force_t> forces;

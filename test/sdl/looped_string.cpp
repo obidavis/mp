@@ -4,6 +4,8 @@
 #include <mp/Vec_ios.hpp>
 #include <mp/World.hpp>
 #include <mp/utility/maths.hpp>
+#include <mp/dynamics/spring_force.hpp>
+#include <mp/rendering/shape.hpp>
 #include "SDL_Renderer.hpp"
 
 
@@ -14,11 +16,12 @@ public:
         : MP_SDL_Renderer<2>(height, width), mapPosition(min, max, {0, height}, {width, 0}) {}
     mp::map_linear<Vec_t> mapPosition;
     
-    void drawConstraint(const Constraint_t &constraint) override
+    void drawConstraint(const Constraint_t &) override {}
+    void drawShape(mp::Line<2, double> line)
     {
         static mp::map_linear<double> radiansToByte(-2.14, 2.14, 0, 255);
-        Vec_t p1Pos = constraint.p1.position;   
-        Vec_t p2Pos = constraint.p2.position;   
+        Vec_t p1Pos = *line.vertices.x();   
+        Vec_t p2Pos = *line.vertices.y();   
 
         Vec_t relpos = (p2Pos - p1Pos).normalised();
         if (relpos.x() < 0.0)
@@ -46,6 +49,7 @@ using Vec_t = Vec<2, double>;
 using Particle_t = Particle<2, double>;
 using Constraint_t = Constraint<2, double>;
 
+
 class WrappedDistanceConstraint : public Constraint<2, double>
 {
     using Particle_t = Particle<2, double>;
@@ -61,44 +65,29 @@ public:
         : Constraint<2, double>(p1, p2), wrap(1.0), length((wrappedDistance(this->p1.position, this->p2.position, 1.0)).length()) 
     {
     }
-    std::pair<Impulse<2, double>, Impulse<2, double>> solve(double dt) override
+    void solve(double dt) override
     {
-        Impulse<2, double> impulse1 = {this->p1, {}};
-        Impulse<2, double> impulse2 = {this->p2, {}};
         double constraintMass = this->p1.inverseMass + this->p2.inverseMass;
         if (constraintMass <= 0)
-            return {impulse1, impulse1};
+            return;
 
         Vec<2, double> relativePosition = wrappedDistance(this->p1.position, this->p2.position, 1.0);
-        
         double distance = relativePosition.length();
-        Vec<2, double> offsetDir = relativePosition.normalised();
         double offset = length - distance;
-        if (log)
-        {
-            std::cout << p1.position << " " << p2.position << "\t";
-            std::cout << "unwrap " << p1.position - p2.position << "\t";
-            std::cout << "udir " << (p1.position - p2.position).normalised() << "\t";
-            std::cout << "rpos " << relativePosition << "\t";
-            std::cout << "distance" << distance << "\t";
-            std::cout << "offsetDir " << offsetDir << "\t";
-            std::cout << "offset " << offset << "\t";
-            std::cout << "\n";
-        }
         offset *= strength;
+        Vec<2, double> offsetDir = relativePosition.normalised();
         Vec<2, double> relativeVelocity = this->p1.linearVelocity - this->p2.linearVelocity;
         double velocityDot = Vec<2, double>::dot(relativeVelocity, offsetDir);
         double bias = -(biasFactor / dt) * offset;
         double lambda = -(velocityDot + bias) / constraintMass;
-        impulse1.deltaV = offsetDir * lambda;
-        impulse2.deltaV = -1 * offsetDir * lambda;
         
-        return {impulse1, impulse2};
+        this->p1.applyImpulse(offsetDir * lambda);
+        this->p2.applyImpulse(-offsetDir * lambda);
     }
     mp::wrapped_distance<double> wrap;
     bool log = false;
     double length;
-    double strength = 0.2;
+    double strength = 0.05;
     double biasFactor = 0.3;
 };
 
@@ -122,51 +111,35 @@ private:
    Vec_t min;
    Vec_t max;
 };
-Vec_t Gravity(const Particle_t &p) { return Vec_t{0, -9} / p.inverseMass; }
+std::vector<Particle_t> particles;
 
 int main()
 {
     _EdgeHandler edge({0.0, -0.01}, {1.0, 100000.0});
     mp::World<2, double> world(&edge);
     
-    std::vector<Particle_t> particles;
     int nParticles = 50;
     for (int i = 0; i < nParticles; ++i)
     {
         Particle_t p;
-        p.position.x() = i / (static_cast<double>(nParticles) * 0.97);
+        p.position.x() = i / (static_cast<double>(nParticles) * 0.98);
         particles.push_back(p);
     }
     
     std::vector<WrappedDistanceConstraint> constraints;
     for (int i = 0; i < particles.size(); ++i)
     {
-        WrappedDistanceConstraint c(particles[i], particles[(i + 1) % particles.size()]);
-        constraints.push_back(c);
+        WrappedDistanceConstraint d(particles[i], particles[(i + 1) % particles.size()]);
+        constraints.push_back(d);
     }
-//     constraints.back().log = true; 
-    
-    std::vector<Particle_t> frame;
-    frame.reserve(particles.size());
-    std::vector<DistanceConstraint<2, double>> frameConstraints;
-    frameConstraints.reserve(particles.size());
-    for (Particle_t &p : particles)
-    {
-        Particle_t f = p;
-        f.inverseMass = 0.0;
-        frame.push_back(f);
-        DistanceConstraint<2, double> c(p, frame.back());
-        c.strength = 0.1;
-        frameConstraints.push_back(c);
 
-    }
-    
     for (auto &p : particles)
         world.addParticle(&p);
     for (auto &c : constraints)
         world.addConstraint(&c);
 
-    world.addForce(Gravity);
+    // world.setUserCB(applySprings);
+
     world.gravity = {0.0, -9.0};
 
     int width = 1000;
@@ -221,14 +194,17 @@ int main()
         start = now;
 
         auto step = duration.count() / 1'000'000'000.0;
-        step *= 0.5;
         world.step(step);   
         
         auto step_duration = std::chrono::high_resolution_clock::now() - start;
         
         renderer.clear();
-        for (auto &c : constraints)
-            renderer.drawConstraint(c);
+        for (auto &spring : constraints)
+        {
+            mp::Line<2, double> line;
+            line.vertices = {&spring.p1.position, &spring.p2.position};
+            renderer.drawShape(line);
+        }
        renderer.show();
 
    }

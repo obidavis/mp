@@ -9,7 +9,6 @@ struct DampedSpring
 {
 protected:
     using Vec_t = Vec<Dim, T>;
-    using Particle_t = Vec<Dim, T>;
     
     inline static Vec_t calculateDampingForce(Vec_t vel, T dampingCoefficient, T k, T mass) 
     {
