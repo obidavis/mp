@@ -1,29 +1,29 @@
 #include <cmath>
 #include <vector>
 #include <chrono>
-#include <mp/Vec_ios.hpp>
 #include <mp/World.hpp>
+#include <mp/common/vec_os.hpp>
 #include "ClothRenderer.hpp"
 
 
-using Vec3 = Vec<3, double>;
-using Particle3 = Particle<3, double>;
+using Vec3 = mp::Vec<3, double>;
+using Particle3 = mp::Particle<3, double>;
 
-std::vector<std::vector<Particle3>> makeGrid(Vec3 min, Vec3 max, Vec<3, double> dim)
+std::vector<Particle3> makeGrid(Vec3 min, Vec3 max, Vec3 dim)
 {
-    Vec<3, double> inc = (max - min) / (dim - 1);
-    std::vector<std::vector<Particle3>> vec;
+    Vec3 inc = (max - min) / (dim - 1);
+    std::vector<Particle3> vec;
     for (int y = 0; y < static_cast<int>(dim.y()); ++y)
     {
-        std::vector<Particle3> row;
         for (int x = 0; x < static_cast<int>(dim.x()); ++x)
         {
             Particle3 particle;
             particle.position.x() = min.x() + x * inc.x();
             particle.position.y() = min.y() + y * inc.y();
-            row.push_back(particle);
+            if (y == 0 || x == 0 || x == static_cast<int>(dim.x()) - 1)
+                particle.inverseMass = 0.0;
+            vec.push_back(particle);
         }
-        vec.push_back(row);
     }
     return vec;
 }
@@ -32,7 +32,8 @@ std::vector<std::vector<Particle3>> makeGrid(Vec3 min, Vec3 max, Vec<3, double> 
 int main(int argc, char * argv[]){
     Vec3 min{-70.0, -20.0, -5.0};
     Vec3 max{70.0, 20.0, 5.0};
-    auto particleRows = makeGrid(min, max, {45.0, 15.0, 0.0});
+    Vec3 gridDim = {45.0, 15.0, 0.0};
+    auto particles = makeGrid(min, max, gridDim);
     float aspectRatio = ((max.x() - min.x()) / (max.y() - min.y()));
     int winHeight = 200;
     int winWidth = 700;
@@ -40,72 +41,49 @@ int main(int argc, char * argv[]){
     
 
     mp::World<3, double> world;
-//    std::vector<std::vector<Particle3>> particleRows;
-//    std::vector<Particle3> topRow;
-//    for (int i = 0; i < 15; ++i)
-//    {
-//        Particle3 particle(0.4, 1.0);
-//        particle.inverseMass = 0.0;
-//        particle.position = {static_cast<double>(i), 5.0};
-//        topRow.push_back(particle);
-//    }
-//    particleRows.push_back(topRow);
-//    for (int r = 1; r <= 5; ++r)
-//    {
-//        std::vector<Particle3> row;
-//        for (int i = 0; i < 15; i++)
-//        {
-//            Particle3 particle(0.4, 1.0);
-//            particle.position = {static_cast<double>(i), 5.0 - static_cast<double>(r) * 0.5};
-//            row.push_back(particle);
-//        }
-//        particleRows.push_back(row);
-//    }
-    for (auto &p : particleRows[particleRows.size() - 1])
-        p.inverseMass = 0.0;
-//    for (auto &p : particleRows[0])
-//        p.inverseMass = 0.0;
-    for (auto &row : particleRows)
+    std::vector<mp::DistanceConstraint<3, double>> joins;
+    std::vector<mp::Triangle<3, double>> polygons;
+    for (int y = 0; y < gridDim.y(); ++y)
     {
-        row[0].inverseMass = 0.0;
-        row[row.size() - 1].inverseMass = 0.0;
-    }
-    std::vector<DistanceConstraint<3, double>> joins;
-    for (int r = 1; r < particleRows.size(); ++r)
-    {
-        for (int c = 0; c < particleRows[r].size(); ++c)
+        for (int x = 0; x < gridDim.x(); ++x)
         {
-            joins.emplace_back(particleRows[r][c], particleRows[r - 1][c]);
-            if (c > 0)
-                joins.emplace_back(particleRows[r][c], particleRows[r][c - 1]);
+
+            int indexTopLeft = x + y * gridDim.x();
+            int indexTopRight = indexTopLeft + 1;
+            int indexBottomLeft = indexTopLeft + gridDim.x();
+            int indexBottomRight = indexBottomLeft + 1;
+            
+            Particle3 &p0 = particles[indexTopLeft];
+            Particle3 &p1 = particles[indexTopRight];
+            Particle3 &p2 = particles[indexBottomLeft];
+            Particle3 &p3 = particles[indexBottomRight];
+            
+            bool firstRow = y == 0;
+            bool lastRow = y == gridDim.y() - 1;
+            bool lastCol = x == gridDim.x() - 1;
+
+            if (!firstRow)
+                joins.emplace_back(p0, p1);
+            
+            if (!lastRow)
+                joins.emplace_back(p0, p2);
+
+            if (!lastCol)
+                joins.emplace_back(p0, p1);
+            
+            if (!lastRow && !lastCol)
+            {
+                polygons.emplace_back(p0.position, p1.position, p2.position);
+                polygons.emplace_back(p1.position, p3.position, p2.position);
+            }
         }
     }
 
-
-    for (auto &row : particleRows)
-        for (Particle3 &particle : row)
-            world.addParticle(&particle);
+    world.addParticles({particles}); 
+    std::vector<std::reference_wrapper<mp::Constraint<3, double>>> join_refs(joins.begin(), joins.end());
+    world.addConstraints({join_refs});
     
-    for (DistanceConstraint<3, double> &join : joins)
-        world.addConstraint(&join);
-
     world.setGravity({0, -13, 0}); 
-    std::vector<Surface<double>> polygons;
-    for (int i = 0; i < particleRows.size() - 1; ++i)
-    {
-        std::vector<Particle3> &row = particleRows[i];
-        std::vector<Particle3> &rowBelow = particleRows[i + 1];
-        for (int j = 0; j < row.size() - 1; ++j)
-        {
-            Particle3 &p1 = row[j];
-            Particle3 &p2 = row[j + 1];
-            Particle3 &p3 = rowBelow[j];
-            Particle3 &p4 = rowBelow[j + 1];
-            
-            polygons.emplace_back(p1.position, p2.position, p3.position);
-            polygons.emplace_back(p2.position, p4.position, p3.position);
-        } 
-    }
 
     SDL_Event sdl_event;
     int i = 10;
@@ -129,10 +107,9 @@ int main(int argc, char * argv[]){
                     double physY = map(y, 0, winHeight, max.y(), min.y());
                     Vec3 impulsePos = {physX, physY, 0.0};
                     std::cout << "interaction: " << impulsePos << "\n";
-                    double minDistance = 999999999.9;
+                    double minDistance = std::numeric_limits<double>::max();
                     Particle3 *closestBody = nullptr;
-                    for (auto &row : particleRows)
-                        for (Particle3 &particle : row)
+                        for (Particle3 &particle : particles)
                         {
                             double distance = (particle.position - impulsePos).length();
                             if (distance < minDistance)
@@ -163,7 +140,7 @@ int main(int argc, char * argv[]){
         // std::cout << "step_duration: " << std::chrono::duration_cast<std::chrono::microseconds>(step_duration).count() << "\n";
         
         renderer.clear();
-       for (Surface<double> &polygon : polygons)
+       for (mp::Triangle<3, double> &polygon : polygons)
             renderer.drawPolygon(polygon);
 //        for (DistanceConstraint<3, double> &join : joins)
 //            renderer.drawConstraint(join);

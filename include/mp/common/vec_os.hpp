@@ -1,5 +1,7 @@
-#include "Vec.hpp"
+#include "vec.hpp"
 #include <iostream>
+
+namespace mp {
 
 template <int Dim, typename T>
 std::ostream &operator<<(std::ostream &os, const Vec<Dim, T> &vec)
@@ -9,4 +11,6 @@ std::ostream &operator<<(std::ostream &os, const Vec<Dim, T> &vec)
         os << vec[i] << ", ";
     os << vec[Dim - 1] << "}";
     return os;
+}
+
 }

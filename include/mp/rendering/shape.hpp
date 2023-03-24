@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../utility/meta.hpp"
-#include "../Vec.hpp"
+#include "../common/vec.hpp"
 #include <functional>
 
 namespace mp {
@@ -18,13 +18,13 @@ struct Shape
     {
         Vec_t c;
         for (int i = 0; i < nVertices; ++i)
-            c += &(vertices[i]);
+            c += vertices[i];
         c /= nVertices;
         return c;
     }
 
     
-    template <int N = nVertices, typename meta::enable_if_t<N == 3>>
+    template <int N = nVertices, typename meta::enable_if_t<N == 3, int> = 0>
     inline Vec_t normal(void) const 
     {
         Vec_t u = vertices[1] - vertices[0];
@@ -38,7 +38,7 @@ struct Shape
 
     }
     
-    template <int N = nVertices, typename meta::enable_if_t<N == 2>>
+    template <int N = nVertices, typename meta::enable_if_t<N == 2, int> = 0>
     inline Vec_t normal(void) const 
     {
         Vec_t u = vertices[1] - vertices[0];

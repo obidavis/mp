@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Vec.hpp"
+#include "../common/vec.hpp"
 
+namespace mp {
 
 template <int Dim, typename T>
 struct PointLight 
@@ -43,4 +44,6 @@ Vec<4, T> _calculateLight(PointLight<Dim, T> light, Vec<Dim, T> lightDirection, 
     for (int i = 0; i < 3; ++i)
         colour[i] = std::min(colour[i], 1.0);
     return {colour[0], colour[1], colour[2], 1.0};
+}
+
 }

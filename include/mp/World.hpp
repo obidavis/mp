@@ -1,102 +1,102 @@
-#ifndef World_h_
-#define World_h_
+#pragma once
 
 #include "utility/debug.hpp"
-#include "Dynamics.hpp"
-#include "Constraint.hpp"
-#include "Container.hpp"
-#include "EdgeHandlers.hpp"
-#include "dynamics/spring_force.hpp"
-#include "Vec.hpp"
+#include "utility/range.hpp"
+#include "dynamics/particle.hpp"
+#include "constraints/constraint.hpp"
+#include "common/vec.hpp"
 
 namespace mp {
 
-template<int Dim, typename ScalarType = double>
+template<int Dim, typename T >
 class World
 {
-    using VecType = Vec<Dim, ScalarType>;
-    using Particle_t = Particle<Dim, ScalarType>;
-    using Force_t = Force<Dim, ScalarType>;
-    using Medium_t = Medium<Dim, ScalarType>;
-    using unary_force_cb_t = void (*)(Particle<Dim, ScalarType> *);
-    using user_cb_t = void (*)(void);
+    // typedefs for current template types
+    using Vec_t = Vec<Dim, T>;
+    using Particle_t = Particle<Dim, T>;
+    using Constraint_t = Constraint<Dim, T>;
+    using particle_cb_fn = void (*)(Particle<Dim, T> &);
+    using force_cb_fn = Vec_t (*)(Particle<Dim, T> &);
+    using user_cb_fn = void (*)(void);
 public:
-    World() : edgeHandler(new EdgeHandlerBase<Dim, ScalarType>()) {}
-    World(EdgeHandlerBase<Dim, ScalarType> *edgeHandler) : edgeHandler(edgeHandler) {}
-    ~World() { delete edgeHandler; }
-    void setRandomSeed(float s) { randomSeed = s; }
-    void addParticle(Particle_t *particle) { particles.push_back(particle); }
-    void addForce(Force_t force) { forces.push_back(force); }
-    void addConstraint(Constraint<Dim, ScalarType> *constraint) { constraints.push_back(constraint); }
-    void setForceCB(unary_force_cb_t cb) { force_cb = cb; } 
-    void setUserCB(user_cb_t cb) { user_cb = cb; } 
-    void setGravity(VecType g) { gravity = g; }
-    void addMedium(Medium_t *medium)
-    {       
-        addForce(medium);
-        //densityFunctions.push_back(std::ref(medium.densityFunction));
-    }   
-    //float densityAt(Vec2d pos);
-    // template <typename T>
-    // bool addForce(T &&force) { return addForce(std::ref(force)); }
-    void step(ScalarType dt)
+    void addParticles(contiguous_range<Particle_t> _particles) { particles = _particles; }
+    void addConstraints(contiguous_range<std::reference_wrapper<Constraint_t>> _constraints) { constraints = _constraints; }
+    void setForceCB(force_cb_fn cb) { force_cb = cb; } 
+    void setUserCB(user_cb_fn cb) { user_cb = cb; } 
+    void setPositionCB(particle_cb_fn cb) { position_handler = cb; }
+    void setGravity(Vec_t g) { gravity = g; }
+    void setDamping(T d) { damping = d; }
+    void step(T dt)
     {
+        static T prevDt = stepSize;
         dtAccumulator += dt;
-        int updateCounter = 0;
+        bool didUpdate = false;
         while (dtAccumulator >= stepSize)
         {
-            updateCounter++;
-//            std::cout << "dt: " << dt << "\n";
-//            std::cout << "dtAccumulator: " << dtAccumulator << "\n";
-            for (Particle_t *particle : particles)
+            didUpdate = true;
+            // apply gravity, damping and user forces to all particles
+            // then integtrate tentative velocity
+            for (Particle_t &particle : particles)
             {           
+                if (particle.inverseMass != T{})
+                    particle.applyForce(gravity / particle.inverseMass);
 
-                if (particle->inverseMass != ScalarType{})
-                    particle->applyForce(gravity / particle->inverseMass);
-                particle->applyForce(-damping * particle->linearVelocity);
-                if (force_cb != nullptr)
-                    force_cb(particle);
-                particle->integrateVelocity(stepSize);
+                particle.applyForce(-damping * particle.linearVelocity);
+
+                if (force_cb)
+                    particle.applyForce(force_cb(particle));
+
+                particle.integrateVelocity(stepSize * timeStretch);
             }
+            
+            // post-integration user callback
             if (user_cb != nullptr)
                 user_cb();
-            int iterationCount = 10;
-            ScalarType iterationDt = stepSize / static_cast<ScalarType>(iterationCount);
+            
+            // solve constraints iteratively
+            T iterationDt = (stepSize * timeStretch) / static_cast<T>(iterationCount);
             for (int i = 0; i < iterationCount; ++i)
             {
-                for (Constraint<Dim, ScalarType> *constraint : constraints)
+                for (Constraint_t &constraint : constraints)
                 {
-                   constraint->solve(iterationDt);
+                   constraint.solve(iterationDt);
                 }
             }
-            for (Particle_t *p : particles)
+
+            // integrate positions and call user position fn
+            for (Particle_t &particle : particles)
             {
-                p->integratePosition(stepSize);
-                edgeHandler->handleEdge(p);
+                particle.integratePosition(stepSize * timeStretch);
+                if (position_handler)
+                    position_handler(particle);
             }
 
             dtAccumulator -= stepSize;
         }
         
-        
-        static ScalarType prevDt = 0.0;
-        ScalarType diff = dt - prevDt;
-        prevDt = dt;
-        isDeathSpiralling = diff > stepSize;
+        if (didUpdate)
+        {
+            T diff = dt - prevDt;
+            isDeathSpiralling = diff > stepSize;
+            prevDt = dt;
+        }
+
+
 
     }     
-    unary_force_cb_t force_cb = nullptr;
-    user_cb_t user_cb = nullptr;
-    VecType gravity{};
-    vector<Particle_t *> particles;
-    vector<Force_t> forces;
-    vector<Constraint<Dim, ScalarType> *> constraints;
-    EdgeHandlerBase<Dim, ScalarType> *edgeHandler;
-    float randomSeed = 0.0f;
-    ScalarType stepSize = 0.01;
-    ScalarType damping = 0.3;
-    ScalarType dtAccumulator{};
+
+    contiguous_range<Particle_t> particles;
+    contiguous_range<std::reference_wrapper<Constraint_t>> constraints;
+    force_cb_fn force_cb = nullptr;
+    particle_cb_fn position_handler = nullptr;
+    user_cb_fn user_cb = nullptr;
+    Vec_t gravity{};
+    int iterationCount = 5;
+    T timeStretch = 1.0;
+    T stepSize = 0.01;
+    T damping = 0.3;
+    T dtAccumulator{}; 
     bool isDeathSpiralling = false;
 };
+
 }
-#endif

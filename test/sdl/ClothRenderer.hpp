@@ -1,20 +1,24 @@
-#include "../../include/mp/Surface.hpp"
-#include "../../include/mp/Shader.hpp"
-#include "../../include/mp/utility/maths.hpp"
-
+#include <mp/dynamics/particle.hpp>
+#include <mp/constraints/constraint.hpp>
+#include <mp/rendering/shape.hpp>
+#include <mp/rendering/shader.hpp>
+#include <mp/utility/maths.hpp>
 #include "SDL_Renderer.hpp"
 
 namespace mp {
 
 class NurbsRenderer : public MP_SDL_Renderer<3>
 {
+    using Vec_t = Vec<3, double>;
+    using Constraint_t = Constraint<3, double>;
+    using Particle_t = Particle<3, double>;
 public:
     NurbsRenderer(unsigned int height, unsigned int width, Vec_t inputMin, Vec_t inputMax)
-        : MP_SDL_Renderer<3>(height, width), mapPosition(inputMin, inputMax, {0, 0, -5}, {width, height, 5})
+        : MP_SDL_Renderer<3>(height, width), mapPosition(inputMin, inputMax, {0, height, -5}, {width, 0, 5})
     {
     }
 
-    void drawConstraint(const Constraint_t &constraint) override
+    void drawConstraint(const Constraint_t &constraint) 
     {
         RGBA<uint8_t> colour{50, 50, 50, 255};
         const Vec_t position1 = mapPosition(constraint.p1.position);
@@ -22,7 +26,7 @@ public:
         drawLine(position1.x(), position1.y(), position2.x(), position2.y(), colour);
     }
 
-    void drawParticle(const Particle_t &particle) override
+    void drawParticle(const Particle_t &particle) 
     {
         RGBA<uint8_t> colour = {127, 0, 0, 255};
         const Vec_t mappedPosition = mapPosition(particle.position);
@@ -33,11 +37,11 @@ public:
     }
     
 
-    void drawPolygon(const Surface<double> surface)
+    void drawPolygon(const Triangle<3, double> &surface)
     {
-        const Vec_t mapped_v1 = mapPosition(surface.v1);
-        const Vec_t mapped_v2 = mapPosition(surface.v2);
-        const Vec_t mapped_v3 = mapPosition(surface.v3);
+        const Vec_t mapped_v1 = mapPosition(surface.vertices[0]);
+        const Vec_t mapped_v2 = mapPosition(surface.vertices[1]);
+        const Vec_t mapped_v3 = mapPosition(surface.vertices[2]);
         PointLight<3, double> light{
             .colour = {1.0, 1.0, 1.0},
             .ambientIntensity = 0.1,

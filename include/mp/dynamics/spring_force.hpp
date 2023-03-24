@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Vec.hpp"
+#include "../common/vec.hpp"
 
 namespace mp {
 

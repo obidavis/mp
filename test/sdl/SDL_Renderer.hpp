@@ -1,8 +1,11 @@
-#include <mp/Renderer.hpp>
+#include <cmath>
 #include <SDL2/SDL.h>
 
+template <typename T>
+struct RGBA { T r, g, b, a; };
+
 template <int Dim>
-class MP_SDL_Renderer : public Renderer<Dim, double>
+class MP_SDL_Renderer  
 {
 public:
     MP_SDL_Renderer(unsigned int height, unsigned int width)
@@ -21,8 +24,8 @@ public:
         SDL_Quit();
     }
 
-    void show(void) override { SDL_RenderPresent(renderer); }
-    void clear(void) override 
+    void show(void) { SDL_RenderPresent(renderer); }
+    void clear(void) 
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);

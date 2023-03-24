@@ -1,13 +1,16 @@
 #pragma once
 #include <cmath>
 #include <type_traits>
-#include "../Vec.hpp"
+#include "../common/vec.hpp"
 #ifdef ARDUINO
 #include <arm_math.h>
 #endif
 
 namespace mp {
     
+    float mp_sqrt(float f) { return sqrtf(f); }
+    double mp_sqrt(double d) { return sqrt(d); }
+
     float exp_fun(float f) { return expf(f); }
     double exp_fun(double d) { return exp(d); }
     template <typename T>

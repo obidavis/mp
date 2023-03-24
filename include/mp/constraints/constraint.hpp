@@ -1,7 +1,9 @@
 #pragma once
 
-#include "Dynamics.hpp"
+#include "../dynamics/particle.hpp"
 #include <utility>
+
+namespace mp {
 
 template <int Dim, typename T>
 class Constraint
@@ -46,3 +48,5 @@ private:
     T strength = 0.2;
     T biasFactor = 0.3;
 };
+
+}

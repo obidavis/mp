@@ -1,5 +1,4 @@
-#ifndef Vec_h_
-#define Vec_h_
+#pragma once
 
 #include <numeric>
 #include <array>
@@ -7,7 +6,9 @@
 #include <type_traits>
 #include <utility>
 #include <tuple>
-#include "utility/meta.hpp"
+#include "../utility/meta.hpp"
+
+namespace mp {
 
 template <int Dim, typename T>
 struct Vec
@@ -30,33 +31,29 @@ private:
     template <typename ...Ts, typename std::enable_if<(sizeof...(Ts) > Dim), int>::type = 0>
     Vec(std::tuple<Ts ...> &&tuple) { static_assert(sizeof...(Ts) == Dim, "Too many items in initialiser"); }
     
-    // single element tuple
+
     template <typename Val, typename std::enable_if<std::is_convertible<Val, T>::value, int>::type = 0>
     static auto as_tuple(Val &&val)
     {
         return std::make_tuple(std::forward<Val>(val));
     }
     
-    // helper for below 
     template <typename V, std::size_t ...Is>
     static auto as_tuple(V &&ex, std::index_sequence<Is ...>)
     {
         return std::make_tuple(ex[Is]...);
     }
-    
-    // if argument was a compatible Vec, forward each element to constructor
+
     template <int D, typename U, typename std::enable_if<std::is_convertible<U , T>::value, int>::type = 0>
     static auto as_tuple(const Vec<D, U> &vec)
     {
         return as_tuple(std::forward<const Vec<D, U> &>(vec), std::make_index_sequence<D>());
     }
 
-    // specialisation to fail with static assert to imporve error message
     template <int D, typename U, typename std::enable_if<!std::is_convertible<U , T>::value, int>::type = 0>
     static auto as_tuple(const Vec<D, U> &vec)
     {
         static_assert(std::is_convertible<U, T>::value, "Incompatible types");
-        // return some dummy stuff to the tuple to avoid further errors
         return as_tuple(Vec<D, T>{}, std::make_index_sequence<D>());
     }
 public:
@@ -142,7 +139,7 @@ public:
     typename std::enable_if<(D > 3), const_reference>::type
     w() const { return _data[3]; }
     
-    Vec operator-(void) { return unary_op([](auto &&a) { return -a; }); }
+    Vec operator-(void) const { return unary_op([](auto &&a) { return -a; }); }
 
     template <typename Tl, typename Tr>
     friend Vec operator+(Tl &&lhs, Tr &&rhs)
@@ -211,7 +208,7 @@ private:
     std::array<T, Dim> _data;
 
     template <typename Fun>
-    Vec unary_op(Fun fun)
+    Vec unary_op(Fun fun) const 
     {
         Vec result;
         for (int i = 0; i < Dim; ++i)
@@ -246,6 +243,4 @@ private:
         return result;
     }
 };
-
-
-#endif
+}
