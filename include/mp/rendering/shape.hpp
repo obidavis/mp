@@ -2,6 +2,7 @@
 
 #include "../utility/meta.hpp"
 #include "../Vec.hpp"
+#include <functional>
 
 namespace mp {
 
@@ -9,7 +10,9 @@ template <int Dim, typename T, int nVertices>
 struct Shape
 {
     using Vec_t = Vec<Dim, T>;
-    Vec<nVertices, Vec_t *> vertices;
+    template <typename ...Ts>
+    Shape(Ts &...args) : vertices{std::ref(args)...} {}
+    Vec<nVertices, std::reference_wrapper<Vec_t>> vertices;
 
     inline Vec_t centre(void) const
     {
@@ -24,8 +27,8 @@ struct Shape
     template <int N = nVertices, typename meta::enable_if_t<N == 3>>
     inline Vec_t normal(void) const 
     {
-        Vec_t u = *(vertices[1]) - *(vertices[0]);
-        Vec_t v = *(vertices[2]) - *(vertices[0]);
+        Vec_t u = vertices[1] - vertices[0];
+        Vec_t v = vertices[2] - vertices[0];
 
         return {
             (u.y() * v.z()) - (u.z() * v.y()),

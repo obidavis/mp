@@ -52,7 +52,9 @@ namespace mp {
     struct wrapped_distance
     {
         wrapped_distance(T range) : range(range) {}
-        template <typename = typename std::enable_if<std::is_same<T, double>::value>::type>
+        template <typename U = T, typename meta::enable_if_t<std::is_same<U, float>::value, int> = 0>
+        T operator()(T val) { return fmodf(fmodf(val, range) + range * 1.5f, range) - range * 0.5f; }
+        template <typename U = T, typename meta::enable_if_t<std::is_same<U, double>::value, int> = 0>
         T operator()(T val) { return fmod(fmod(val, range) + range * 1.5, range) - range * 0.5; }
     private:
         T range;

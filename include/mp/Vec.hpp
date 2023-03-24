@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <utility>
 #include <tuple>
+#include "utility/meta.hpp"
 
 template <int Dim, typename T>
 struct Vec
@@ -59,6 +60,7 @@ public:
     Vec(Args ...args)
         : Vec(std::move(std::tuple_cat(as_tuple(std::forward<Args>(args))...))) {}
     
+    template <typename U = T, typename = mp::meta::enable_if_t<std::is_default_constructible<U>::value>>
     Vec() : _data{} {}
 
     inline T lengthSquared(void) const
@@ -97,40 +99,43 @@ public:
     operator T() { return _data[0]; }
     template <int D = Dim, typename = typename std::enable_if<D == 1, int>::type>
     operator const T() const { return _data[0]; }
+    
+    using reference = mp::meta::unwrap_reference_t<T> &; 
+    using const_reference = const mp::meta::unwrap_reference_t<T> &;
 
-    T& operator[](int i) { return _data[i]; }
-    const T& operator[](int i) const { return _data[i]; }
+    reference operator[](int i) { return _data[i]; }
+    const_reference operator[](int i) const { return _data[i]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 0), T&>::type
+    typename std::enable_if<(D > 0), reference>::type
     x() { return _data[0]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 0), const T&>::type
+    typename std::enable_if<(D > 0), const_reference>::type
     x() const { return _data[0]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 1), T&>::type
+    typename std::enable_if<(D > 1), reference>::type
     y() { return _data[1]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 1), const T&>::type
+    typename std::enable_if<(D > 1), const_reference>::type
     y() const { return _data[1]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 2), T&>::type
+    typename std::enable_if<(D > 2), reference>::type
     z() { return _data[2]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 2), const T&>::type
+    typename std::enable_if<(D > 2), const_reference>::type
     z() const { return _data[2]; }
     
     template <int D = Dim>
-    typename std::enable_if<(D > 3), T&>::type
+    typename std::enable_if<(D > 3), reference>::type
     w() { return _data[3]; }
 
     template <int D = Dim>
-    typename std::enable_if<(D > 3), const T&>::type
+    typename std::enable_if<(D > 3), const_reference>::type
     w() const { return _data[3]; }
     
     Vec operator-(void) { return unary_op([](auto &&a) { return -a; }); }
