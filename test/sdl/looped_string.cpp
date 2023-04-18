@@ -140,8 +140,8 @@ Vec_t applyForces(Particle_t &particle)
 
 int main()
 {
-    int width = 1000;
-    int height = 200;
+    int width = 1500;
+    int height = 400;
     world.setForceCB(applyForces);
     
     Vec_t physMin = {0.0, -0.03};
@@ -229,7 +229,7 @@ int main()
         }
        renderer.show();
        std::cout << "\n";
-
+        
    }
 
 }
